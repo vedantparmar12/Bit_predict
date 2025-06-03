@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 # Function to load and preprocess data
 @st.cache_data
 def load_data():
-    df = pd.read_csv('your_data.csv')  # Replace with your actual data file name
+    df = pd.read_csv('train.csv')  
     df['date'] = pd.to_datetime(df['date'])
     return df
 
