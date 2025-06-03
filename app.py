@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 # Function to load and preprocess data
 @st.cache_data
 def load_data():
-    df = pd.read_csv('train.csv')  
+    df = pd.read_csv('train.csv')
     df['date'] = pd.to_datetime(df['date'])
     return df
 
@@ -63,21 +63,47 @@ def main():
     train_prophet = prepare_data_for_prophet(train_set_daily)
     test_prophet = prepare_data_for_prophet(test_set_daily)
 
+    # --- Debugging Information for Prophet Training ---
+    st.subheader("Debugging Info for Prophet Training Data")
+    if train_prophet.empty:
+        st.error("Error: The training data for Prophet is empty! Please adjust store, item, or split date.")
+    else:
+        st.write(f"Shape of train_prophet: {train_prophet.shape}")
+        st.write("First 5 rows of train_prophet:")
+        st.dataframe(train_prophet.head())
+        st.write("Last 5 rows of train_prophet:")
+        st.dataframe(train_prophet.tail())
+        st.write("Descriptive statistics for 'y' (sales) in train_prophet:")
+        st.dataframe(train_prophet['y'].describe())
+        st.write("Missing values in train_prophet:")
+        st.dataframe(train_prophet.isnull().sum())
+        if train_prophet['y'].std() == 0:
+            st.warning("Warning: The 'y' (sales) column in train_prophet has zero standard deviation. This often causes Prophet to fail.")
+    # --- End Debugging Information ---
+
     # Train Prophet model
     with st.spinner('Training Prophet model...'):
-        prophet_model = train_prophet_model(train_prophet)
+        try:
+            prophet_model = train_prophet_model(train_prophet)
+        except RuntimeError as e:
+            st.error(f"Failed to train Prophet model: {e}. This often happens with insufficient or problematic training data.")
+            st.warning("Please check the 'Debugging Info for Prophet Training Data' above for issues like empty data, constant sales, or too few data points.")
+            return # Stop execution if model training fails
 
     # Make predictions
     last_date = df_filtered['date'].max()
+
     future_dates = pd.date_range(start=last_date, periods=forecast_days)
     prophet_predictions = make_prophet_predictions(prophet_model, future_dates)
 
-    # Evaluate Prophet model
-    prophet_mae, prophet_mape = evaluate_model(test_prophet['y'], prophet_predictions['prediction'][:len(test_prophet)])
+    if not test_prophet.empty and len(test_prophet) > 0 and len(prophet_predictions) >= len(test_prophet):
+        prophet_mae, prophet_mape = evaluate_model(test_prophet['y'], prophet_predictions['prediction'][:len(test_prophet)])
+        st.header('Forecast Results')
+        st.write(f"Prophet Model - MAE: {prophet_mae:.2f}, MAPE: {prophet_mape:.2%}")
+    else:
+        st.warning("Cannot evaluate model: Test set is empty or forecast is too short for evaluation.")
+        st.header('Forecast Results (Evaluation Skipped)')
 
-    # Display results
-    st.header('Forecast Results')
-    st.write(f"Prophet Model - MAE: {prophet_mae:.2f}, MAPE: {prophet_mape:.2%}")
 
     # Plot results
     fig = go.Figure()
