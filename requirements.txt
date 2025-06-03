@@ -1,7 +1,7 @@
-streamlit
-pandas
-numpy
+streamlit==1.37.1
+pandas==2.2.2
+numpy==1.26.4
 prophet==1.1.5
-plotly
-scikit-learn
-statsmodels
+plotly==5.22.0
+scikit-learn==1.5.1
+statsmodels==0.14.4
